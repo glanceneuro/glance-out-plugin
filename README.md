@@ -86,9 +86,15 @@ and this plugin's `send()` happen in one pass.
 
 ## Downloading a build
 
-Every push to `main` builds the plugin on Linux, macOS and Windows, in both
-Release and Debug, and attaches the result to the run. **Actions** tab → a run →
-**Artifacts**. They expire after 90 days.
+Every push to `main` builds the plugin on Linux, macOS and Windows and attaches
+the result to the run. **Actions** tab → a run → **Artifacts**. They expire
+after 90 days.
+
+| platform | configurations built |
+| --- | --- |
+| Linux | Release, Debug |
+| macOS | Release, Debug |
+| Windows | Release, RelWithDebInfo |
 
 Drop the file into the GUI's plugins directory:
 
@@ -98,14 +104,19 @@ Drop the file into the GUI's plugins directory:
 | macOS | `glance-out-plugin.bundle` | `~/Library/Application Support/open-ephys/plugins-api10/` |
 | Windows | `glance-out-plugin.dll` (+ `.pdb`) | `plugin-GUI\Build\Release\plugins\` |
 
-Two things to know before reaching for the Debug artifact:
+Three things to know before reaching for a non-Release artifact:
 
-- **It must match the GUI you run it in.** On Windows especially, a Debug plugin
-  and a Release GUI link different C runtimes, and the mismatch shows up as a
-  crash on load rather than an error message. Use the Release artifact unless
-  you are also running a Debug build of the GUI. The `.pdb` shipped alongside
-  the Release DLL is usually what you actually wanted — it makes a crash report
-  from the Release binary readable.
+- **A Debug plugin needs a Debug GUI.** JUCE compiled with `JUCE_DEBUG` refers to
+  symbols only a Debug-built JUCE provides, so a Debug plugin and a Release GUI
+  do not go together. On Linux and macOS that surfaces as an unresolved symbol
+  when the GUI tries to load the plugin.
+- **Windows has no Debug artifact, and cannot.** The published `open-ephys.lib`
+  is Release-only, and JUCE plants a deliberate tripwire symbol
+  (`this_will_fail_to_link_if_some_of_your_compile_units_are_built_in_debug_mode`)
+  that turns the mismatch into a link error rather than a mystery at runtime.
+  RelWithDebInfo is the Windows answer: optimized, loads in the normal Release
+  GUI, and ships the `.pdb` that makes a crash report readable. Plain Release
+  emits no PDB at all.
 - **On Linux, "Debug" is still optimized.** The Open Ephys plugin CMakeLists
   forces `-O3` in every configuration; Debug only adds symbols and `DEBUG=1`.
 

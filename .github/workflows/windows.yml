@@ -27,7 +27,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [Release, Debug]
+        # RelWithDebInfo rather than Debug, and that is forced, not a taste.
+        # JUCE plants a tripwire symbol --
+        #   this_will_fail_to_link_if_some_of_your_compile_units_are_built_in_debug_mode
+        # -- that only a Debug-built JUCE exports, along with juce::logAssertion.
+        # The open-ephys.lib published for this toolchain is Release-only, so a
+        # Debug plugin has nothing to resolve those against and fails at link.
+        # RelWithDebInfo still emits a PDB, which plain Release does not, so
+        # this is the configuration that actually gives a debuggable binary.
+        config: [Release, RelWithDebInfo]
 
     steps:
     - name: Checkout
@@ -43,15 +51,13 @@ jobs:
         git clone https://github.com/open-ephys/plugin-GUI.git --branch main
         cd plugin-GUI/Build
         cmake -G "Visual Studio 17 2022" -A x64 ..
-        mkdir -p Release Debug
+        mkdir -p Release
         curl -L https://openephys.jfrog.io/artifactory/GUI-binaries/Libraries/open-ephys-lib-v1.0.0.zip --output open-ephys-lib.zip
         unzip -o open-ephys-lib.zip -d Release
-        # The plugin links ${GUI_BASE_DIR}/Build/<Config>/open-ephys.lib, so a
-        # Debug build looks in Debug/. Only a Release lib is published, and an
-        # import library is little more than a symbol map, so it links either
-        # way. Loading is the part that cares -- see the Debug caveat in
-        # README.md.
-        cp -r Release/. Debug/
+        # Release/ is the only folder needed: the plugin links
+        # ${GUI_BASE_DIR}/Build/<CONFIGURATION_FOLDER>/open-ephys.lib, and
+        # CONFIGURATION_FOLDER resolves to "Release" for every configuration
+        # except Debug -- which this job deliberately does not build.
       shell: bash
 
     - name: configure
