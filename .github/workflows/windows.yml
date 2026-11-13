@@ -45,7 +45,7 @@ jobs:
 
     - name: configure
       run: |
-        cd Build
+        mkdir -p Build && cd Build
         cmake -G "Visual Studio 17 2022" -A x64 ..
       shell: bash
 

@@ -26,9 +26,16 @@ jobs:
 
     # Runs before the build because it needs neither JUCE nor Open Ephys, so a
     # wire-format regression is reported in seconds rather than after a full
-    # plugin build.
+    # plugin build. LaserDriver is the reference the bytes are diffed against;
+    # without it the script can only self-check, which is not what this step is
+    # for. Shallow clone, about 8 MB.
     - name: wire format
-      run: bash test/run_protocol_test.sh
+      run: |
+        git clone --depth 1 https://github.com/ckemere/LaserDriver.git ../LaserDriver
+        # Exit 2 means the reference was not found and only the self-consistency
+        # half ran. That is a skip, not a failure -- it is how this step should
+        # degrade if LaserDriver ever stops being readable. Anything else fails.
+        bash test/run_protocol_test.sh ../LaserDriver || [ $? -eq 2 ]
 
     - name: setup
       run: |
@@ -40,11 +47,11 @@ jobs:
 
     - name: build
       run: |
-        cd Build
+        mkdir -p Build && cd Build
         cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
         make
 
     # Needs plugin-GUI for juce_core, which the setup step has now cloned.
     # Talks only to a stand-in broker on 127.0.0.1 -- no Pi, no laser.
     - name: loopback
-      run: bash test/run_loopback_test.sh ../../plugin-GUI
+      run: bash test/run_loopback_test.sh ../../plugin-GUI ../LaserDriver

@@ -91,8 +91,12 @@ The usual Open Ephys plugin build. Clone next to `plugin-GUI`:
 ```
   parent/
   ├── plugin-GUI/
-  └── glance-out-plugin/
+  └── OEPlugins/
+      └── glance-out-plugin/
 ```
+
+That nesting is what `GUI_BASE_DIR` defaults to (`../../plugin-GUI`); any folder
+name works in place of `OEPlugins`.
 
 ```bash
 mkdir -p Build && cd Build

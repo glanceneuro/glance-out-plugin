@@ -19,7 +19,10 @@ jobs:
       uses: actions/checkout@v5
 
     - name: wire format
-      run: bash test/run_protocol_test.sh
+      run: |
+        git clone --depth 1 https://github.com/ckemere/LaserDriver.git ../LaserDriver
+        # Exit 2 is a skip, not a failure -- see linux.yml.
+        bash test/run_protocol_test.sh ../LaserDriver || [ $? -eq 2 ]
 
     - name: setup
       run: |
@@ -29,7 +32,7 @@ jobs:
 
     - name: build
       run: |
-        cd Build
+        mkdir -p Build && cd Build
         cmake -G "Xcode" ..
         xcodebuild -configuration Release
 
