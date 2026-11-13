@@ -67,23 +67,38 @@ jobs:
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
 
+    # msbuild is invoked through cmd, the way it is in the sibling plugin repo.
+    # The redirect keeps the output for the reporting step below; ERRORLEVEL is
+    # stashed before `type` so the step still fails when the build does.
     - name: build-plugin
-      shell: bash
+      shell: cmd
       run: |
         cd Build
-        set +e
-        msbuild INSTALL.vcxproj -p:Configuration=${{ matrix.config }} -p:Platform=x64 -v:minimal 2>&1 | tee build.log
-        status=${PIPESTATUS[0]}
-        set -e
-        if [ "$status" -ne 0 ]; then
-          # Downloading a job log needs admin rights on the repo; annotations
-          # do not. Echo the actual compiler and linker errors so a failure is
-          # diagnosable from the PR view and from the API.
-          grep -iE "error [A-Z]*[0-9]+|: error|fatal error" build.log \
-            | sed 's/^[[:space:]]*//' | sort -u | head -25 \
-            | while IFS= read -r line; do echo "::error::$line"; done
-          exit "$status"
+        msbuild INSTALL.vcxproj -p:Configuration=${{ matrix.config }} -p:Platform=x64 -v:minimal > build.log 2>&1
+        set BUILD_STATUS=%ERRORLEVEL%
+        type build.log
+        exit /b %BUILD_STATUS%
+
+    # Downloading a job log needs admin rights on the repo; annotations do not.
+    # Re-emitting the failure here makes a Windows-only break diagnosable by
+    # anyone, which matters because this is the only platform whose socket code
+    # is compiled nowhere else. Falls back to the tail of the log when nothing
+    # matches, so the step can never report nothing at all.
+    - name: surface build errors
+      if: failure()
+      shell: bash
+      run: |
+        log=Build/build.log
+        if [ ! -f "$log" ]; then
+          echo "::error::build-plugin produced no log -- it failed before msbuild ran"
+          exit 0
         fi
+        lines=$(grep -iE "error [A-Z]*[0-9]+|: error|fatal error|cannot open|unresolved external" "$log" \
+                | sed 's/^[[:space:]]*//' | sort -u | head -25)
+        [ -z "$lines" ] && lines=$(tail -40 "$log")
+        printf '%s\n' "$lines" | while IFS= read -r line; do
+          [ -n "$line" ] && echo "::error::$line"
+        done
 
     # Visual Studio is a multi-config generator, so output lands in
     # Build/<Config>/. The PDB goes with it: it is what makes a crash report
