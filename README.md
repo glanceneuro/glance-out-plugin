@@ -84,6 +84,39 @@ Events reach a downstream sink within the *same* callback that generated them, s
 splitting detection and output across two plugins costs nothing — the detector's event
 and this plugin's `send()` happen in one pass.
 
+## Downloading a build
+
+Every push to `main` builds the plugin on Linux, macOS and Windows, in both
+Release and Debug, and attaches the result to the run. **Actions** tab → a run →
+**Artifacts**. They expire after 90 days.
+
+Drop the file into the GUI's plugins directory:
+
+| platform | artifact | goes in |
+| --- | --- | --- |
+| Linux | `glance-out-plugin.so` | `plugin-GUI/Build/Release/plugins/` |
+| macOS | `glance-out-plugin.bundle` | `~/Library/Application Support/open-ephys/plugins-api10/` |
+| Windows | `glance-out-plugin.dll` (+ `.pdb`) | `plugin-GUI\Build\Release\plugins\` |
+
+Two things to know before reaching for the Debug artifact:
+
+- **It must match the GUI you run it in.** On Windows especially, a Debug plugin
+  and a Release GUI link different C runtimes, and the mismatch shows up as a
+  crash on load rather than an error message. Use the Release artifact unless
+  you are also running a Debug build of the GUI. The `.pdb` shipped alongside
+  the Release DLL is usually what you actually wanted — it makes a crash report
+  from the Release binary readable.
+- **On Linux, "Debug" is still optimized.** The Open Ephys plugin CMakeLists
+  forces `-O3` in every configuration; Debug only adds symbols and `DEBUG=1`.
+
+The macOS bundle is **unsigned** — the template's notarization step used Open
+Ephys's Apple credentials, which aren't ours. Gatekeeper quarantines it on
+download, so clear the attribute first:
+
+```bash
+xattr -dr com.apple.quarantine glance-out-plugin.bundle
+```
+
 ## Building
 
 The usual Open Ephys plugin build. Clone next to `plugin-GUI`:

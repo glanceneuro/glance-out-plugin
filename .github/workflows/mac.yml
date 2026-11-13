@@ -1,8 +1,11 @@
-# Build-only CI. There is deliberately NO deploy step -- see linux.yml for why.
+# Build CI. There is deliberately NO deploy step -- see linux.yml for why.
 #
 # The template's macOS job also codesigned and notarized the bundle with seven
 # Apple secrets before uploading to Open Ephys's Artifactory. None of those
-# credentials belong to this project.
+# credentials belong to this project. The bundle published here is therefore
+# UNSIGNED: Gatekeeper will quarantine it on download, so clear the attribute
+# before use --
+#   xattr -dr com.apple.quarantine glance-out-plugin.bundle
 name: macOS
 
 on:
@@ -13,6 +16,11 @@ on:
 jobs:
   build-mac:
     runs-on: [macos-latest]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Release, Debug]
 
     steps:
     - name: Checkout
@@ -34,7 +42,22 @@ jobs:
       run: |
         mkdir -p Build && cd Build
         cmake -G "Xcode" ..
-        xcodebuild -configuration Release
+        xcodebuild -configuration ${{ matrix.config }}
+
+    # Xcode is a multi-config generator, so output lands in Build/<Config>/.
+    # The target is a BUNDLE, which is a directory, not a single file.
+    - name: collect
+      run: |
+        mkdir -p dist
+        cp -R Build/${{ matrix.config }}/*.bundle dist/
+        ls -la dist/
+
+    - name: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: glance-out-plugin-macos-${{ matrix.config }}
+        path: dist/
+        if-no-files-found: error
 
     # test/run_loopback_test.sh supports macOS (it compiles juce_core from the
     # Objective-C++ TU), but that path has not been run on a Mac yet. Add the

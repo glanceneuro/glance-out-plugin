@@ -1,10 +1,13 @@
-# Build-only CI. There is deliberately NO deploy step.
+# Build CI. There is deliberately NO deploy step.
 #
 # The Open Ephys plugin template's workflows end by uploading to
 # openephys.jfrog.io/artifactory using secrets.ARTIFACTORY_ACCESS_TOKEN -- an
 # Open Ephys org credential, under their package name. That is their release
 # pipeline, not ours. If you ever sync a workflow from upstream, drop the
 # deploy step again.
+#
+# Binaries are published as run artifacts instead: Actions tab -> a run ->
+# Artifacts. They expire after the repo's retention window, 90 days by default.
 #
 # All three platforms are kept because Source/LhtrClient.cpp carries real
 # _WIN32 branches (winsock2 vs POSIX sockets, ioctlsocket vs fcntl,
@@ -19,6 +22,13 @@ on:
 jobs:
   build-linux:
     runs-on: [ubuntu-22.04]
+
+    strategy:
+      # Don't let one config cancel the other: a broken Debug build should
+      # still leave a downloadable Release binary.
+      fail-fast: false
+      matrix:
+        config: [Release, Debug]
 
     steps:
     - name: Checkout
@@ -48,10 +58,25 @@ jobs:
     - name: build
       run: |
         mkdir -p Build && cd Build
-        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.config }} ..
         make
 
     # Needs plugin-GUI for juce_core, which the setup step has now cloned.
     # Talks only to a stand-in broker on 127.0.0.1 -- no Pi, no laser.
     - name: loopback
       run: bash test/run_loopback_test.sh ../../plugin-GUI ../LaserDriver
+
+    # Unix Makefiles is a single-config generator, so the .so lands straight in
+    # Build/ rather than in a per-config subdirectory.
+    - name: collect
+      run: |
+        mkdir -p dist
+        cp Build/*.so dist/
+        ls -la dist/
+
+    - name: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: glance-out-plugin-linux-${{ matrix.config }}
+        path: dist/
+        if-no-files-found: error
