@@ -14,6 +14,12 @@
 //
 // Build and run via test/run_protocol_test.sh (no JUCE, no GUI, no Pi).
 
+// Windows pulls in a header (via JUCE) that defines DUPLICATE as an
+// object-like macro. That turned `lhtr::DUPLICATE` into `lhtr::<number>` and
+// broke the build on the Windows runner alone. Poison the name here so a
+// reintroduced ALL_CAPS member fails on every platform instead of only there.
+#define DUPLICATE 6
+
 #include "../Source/LhtrProtocol.h"
 
 #include <cstdio>
@@ -93,7 +99,7 @@ int main()
         lhtr::putU32 (r + 0, lhtr::MAGIC);
         r[4] = lhtr::VERSION;
         r[5] = lhtr::TYPE_ACK;
-        r[6] = lhtr::FIRED;
+        r[6] = (uint8_t) lhtr::Status::Fired;
         r[7] = lhtr::F_GPIO_SIM;
         lhtr::putU32 (r + 8, 0xDEADBEEFu);
         lhtr::putU64 (r + 12, 111111ull);
@@ -102,7 +108,7 @@ int main()
 
         lhtr::Reply rep;
         check (lhtr::parseReply (r, sizeof (r), rep), "a well-formed ACK parses");
-        check (rep.status == lhtr::FIRED, "status survives the round trip");
+        check (rep.is (lhtr::Status::Fired), "status survives the round trip");
         check (rep.flags == lhtr::F_GPIO_SIM, "flags survive");
         check (rep.seq == 0xDEADBEEFu, "seq survives");
         check (rep.clientTs == 111111ull, "client_ts survives");

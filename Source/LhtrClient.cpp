@@ -215,7 +215,7 @@ void LhtrClient::run()
         lastStatus.store ((int) reply.status, std::memory_order_relaxed);
         lastFlags.store (reply.flags, std::memory_order_relaxed);
 
-        if (reply.status == lhtr::FIRED)
+        if (reply.is (lhtr::Status::Fired))
             firedCount.fetch_add (1, std::memory_order_relaxed);
 
         if ((reply.flags & lhtr::F_MCU_BUSY) != 0)
@@ -236,14 +236,14 @@ juce::String LhtrClient::getLastStatus() const
         return "no reply yet";
 
     juce::String text;
-    switch (s)
+    switch ((lhtr::Status) s)
     {
-        case lhtr::FIRED: text = "fired"; break;
-        case lhtr::DUPLICATE: text = "duplicate"; break;
-        case lhtr::PONG: text = "pong"; break;
-        case lhtr::BAD_VERSION: text = "bad version"; break;
-        case lhtr::BAD_TYPE: text = "bad type"; break;
-        case lhtr::NO_GPIO: text = "no GPIO"; break;
+        case lhtr::Status::Fired: text = "fired"; break;
+        case lhtr::Status::Duplicate: text = "duplicate"; break;
+        case lhtr::Status::Pong: text = "pong"; break;
+        case lhtr::Status::BadVersion: text = "bad version"; break;
+        case lhtr::Status::BadType: text = "bad type"; break;
+        case lhtr::Status::NoGpio: text = "no GPIO"; break;
         default: text = "status " + juce::String (s); break;
     }
 

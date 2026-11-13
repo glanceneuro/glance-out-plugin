@@ -34,14 +34,20 @@ constexpr size_t REQUEST_BYTES = 20;
 //         magic ver type status flags seq client_ts rx_ns edge_ns
 constexpr size_t REPLY_BYTES = 36;
 
-enum Status : uint8_t
+// Named in CamelCase, and scoped, on purpose. The reference calls these
+// FIRED / DUPLICATE / PONG / BAD_VERSION / BAD_TYPE / NO_GPIO, but a Windows
+// header pulled in by JUCE defines DUPLICATE as an object-like macro, so
+// `lhtr::DUPLICATE` expanded to `lhtr::<number>` and would not compile there.
+// Keep new members out of ALL_CAPS for the same reason; the numbers are what
+// has to match the reference, not the spelling.
+enum class Status : uint8_t
 {
-    FIRED = 0,
-    DUPLICATE = 1,
-    PONG = 2,
-    BAD_VERSION = 3,
-    BAD_TYPE = 4,
-    NO_GPIO = 5
+    Fired = 0,
+    Duplicate = 1,
+    Pong = 2,
+    BadVersion = 3,
+    BadType = 4,
+    NoGpio = 5
 };
 
 constexpr uint8_t F_MCU_BUSY = 0x01;   // mid-pulse: the MCU ignored this edge
@@ -97,12 +103,17 @@ inline size_t packRequest (uint8_t* buf, uint8_t msgType, uint32_t seq, uint64_t
 
 struct Reply
 {
+    /** The raw status byte, kept as it arrived. Deliberately not a Status: a
+        broker newer than this plugin can send one we have no name for, and
+        narrowing it here would lose that. Compare with is(). */
     uint8_t status = 0;
     uint8_t flags = 0;
     uint32_t seq = 0;
     uint64_t clientTs = 0;
     uint64_t rxNs = 0;
     uint64_t edgeNs = 0;
+
+    bool is (Status s) const { return status == (uint8_t) s; }
 
     /** Broker-measured time from packet arrival to GPIO edge, nanoseconds. */
     uint64_t piLatencyNs() const { return edgeNs > rxNs ? edgeNs - rxNs : 0; }
