@@ -1,0 +1,50 @@
+# Build-only CI. There is deliberately NO deploy step.
+#
+# The Open Ephys plugin template's workflows end by uploading to
+# openephys.jfrog.io/artifactory using secrets.ARTIFACTORY_ACCESS_TOKEN -- an
+# Open Ephys org credential, under their package name. That is their release
+# pipeline, not ours. If you ever sync a workflow from upstream, drop the
+# deploy step again.
+#
+# All three platforms are kept because Source/LhtrClient.cpp carries real
+# _WIN32 branches (winsock2 vs POSIX sockets, ioctlsocket vs fcntl,
+# closesocket) that a Linux-only build cannot exercise.
+name: Linux
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-linux:
+    runs-on: [ubuntu-22.04]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    # Runs before the build because it needs neither JUCE nor Open Ephys, so a
+    # wire-format regression is reported in seconds rather than after a full
+    # plugin build.
+    - name: wire format
+      run: bash test/run_protocol_test.sh
+
+    - name: setup
+      run: |
+        sudo apt update
+        cd ../..
+        git clone https://github.com/open-ephys/plugin-GUI.git --branch main
+        sudo ./plugin-GUI/Resources/Scripts/install_linux_dependencies.sh
+        cd plugin-GUI/Build && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+
+    - name: build
+      run: |
+        cd Build
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        make
+
+    # Needs plugin-GUI for juce_core, which the setup step has now cloned.
+    # Talks only to a stand-in broker on 127.0.0.1 -- no Pi, no laser.
+    - name: loopback
+      run: bash test/run_loopback_test.sh ../../plugin-GUI

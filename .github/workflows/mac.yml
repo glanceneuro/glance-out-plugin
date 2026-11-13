@@ -1,0 +1,38 @@
+# Build-only CI. There is deliberately NO deploy step -- see linux.yml for why.
+#
+# The template's macOS job also codesigned and notarized the bundle with seven
+# Apple secrets before uploading to Open Ephys's Artifactory. None of those
+# credentials belong to this project.
+name: macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-mac:
+    runs-on: [macos-latest]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: wire format
+      run: bash test/run_protocol_test.sh
+
+    - name: setup
+      run: |
+        cd ../..
+        git clone https://github.com/open-ephys/plugin-GUI.git --branch main
+        cd plugin-GUI/Build && cmake -G "Xcode" ..
+
+    - name: build
+      run: |
+        cd Build
+        cmake -G "Xcode" ..
+        xcodebuild -configuration Release
+
+    # test/run_loopback_test.sh supports macOS (it compiles juce_core from the
+    # Objective-C++ TU), but that path has not been run on a Mac yet. Add the
+    # step here once it has.

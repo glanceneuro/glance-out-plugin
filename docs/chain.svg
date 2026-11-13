@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 196" width="940" height="196" role="img" aria-label="Signal chain: GLANCE source to crossing detector to LaserHAT Output, then over UDP to the Raspberry Pi broker, the LaserHAT MCU, and the laser.">
+  <!-- Boxes carry their own light fill so the diagram reads on both the light
+       and dark GitHub themes; lines and labels use a mid grey that works on
+       either background. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .box   { fill: #eef2f7; stroke: #94a3b8; stroke-width: 1.5; rx: 6; }
+      .name  { fill: #1f2937; font: 600 13px -apple-system, "Segoe UI", Roboto, sans-serif; text-anchor: middle; }
+      .sub   { fill: #52627a; font: 400 10.5px -apple-system, "Segoe UI", Roboto, sans-serif; text-anchor: middle; }
+      .edge  { stroke: #94a3b8; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .label { fill: #94a3b8; font: 400 10.5px -apple-system, "Segoe UI", Roboto, sans-serif; text-anchor: middle; }
+      .group { fill: none; stroke: #94a3b8; stroke-width: 1; stroke-dasharray: 4 4; rx: 8; }
+      .gname { fill: #94a3b8; font: 600 10.5px -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .this  { stroke: #2f6f4f; stroke-width: 2.5; fill: #e3f0e8; }
+    </style>
+  </defs>
+
+  <!-- running on the host -->
+  <rect class="group" x="14" y="30" width="476" height="96"/>
+  <text class="gname" x="24" y="24">Open Ephys</text>
+
+  <rect class="box" x="26" y="48" width="124" height="60"/>
+  <text class="name" x="88" y="73">GLANCE Source</text>
+  <text class="sub"  x="88" y="90">30 kHz ephys</text>
+
+  <path class="edge" d="M 152 78 L 178 78"/>
+
+  <rect class="box" x="182" y="48" width="124" height="60"/>
+  <text class="name" x="244" y="73">Crossing Detector</text>
+  <text class="sub"  x="244" y="90">channel · threshold</text>
+
+  <path class="edge" d="M 308 78 L 342 78"/>
+  <text class="label" x="325" y="70">TTL</text>
+
+  <rect class="box this" x="344" y="48" width="134" height="60"/>
+  <text class="name" x="411" y="73">LaserHAT Output</text>
+  <text class="sub"  x="411" y="90">this plugin</text>
+
+  <!-- over the network -->
+  <path class="edge" d="M 480 78 L 558 78" stroke-dasharray="5 4"/>
+  <text class="label" x="519" y="68">UDP · LHTR</text>
+  <text class="label" x="519" y="99">20 bytes</text>
+
+  <!-- running on the Pi -->
+  <rect class="group" x="550" y="30" width="302" height="96"/>
+  <text class="gname" x="560" y="24">Raspberry Pi + LaserHAT</text>
+
+  <rect class="box" x="562" y="48" width="126" height="60"/>
+  <text class="name" x="625" y="73">laserhat-brokerd</text>
+  <text class="sub"  x="625" y="90">raises GPIO 26</text>
+
+  <path class="edge" d="M 690 78 L 712 78"/>
+
+  <rect class="box" x="714" y="48" width="126" height="60"/>
+  <text class="name" x="777" y="73">LaserHAT MCU</text>
+  <text class="sub"  x="777" y="90">owns pulse width</text>
+
+  <path class="edge" d="M 854 78 L 886 78"/>
+  <text class="label" x="908" y="82">laser</text>
+
+  <text class="label" x="411" y="152">one datagram per rising edge · at most once · nothing retransmitted</text>
+</svg>
